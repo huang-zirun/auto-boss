@@ -1,0 +1,80 @@
+[
+  {
+    "domain": ".zhipin.com",
+    "expiry": 1773514801,
+    "httpOnly": true,
+    "name": "zp_at",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "Eww3uD8B9Do4wUVYAWmmUK6H3-yK7F76C8Vq4cpNEeI~"
+  },
+  {
+    "domain": ".zhipin.com",
+    "expiry": 1773514801,
+    "httpOnly": true,
+    "name": "wt2",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "D3psvlK2LYnlQoCys3jhfd1V0c50IKFpURMnWj4p98gfFcdrbsUCnzYpwtanhUEs3QoH3OwyY2NYmy3iGuSX05g~~"
+  },
+  {
+    "domain": ".zhipin.com",
+    "httpOnly": false,
+    "name": "__g",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "-"
+  },
+  {
+    "domain": ".zhipin.com",
+    "expiry": 1773514801,
+    "httpOnly": true,
+    "name": "wbg",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "1"
+  },
+  {
+    "domain": "www.zhipin.com",
+    "expiry": 1807169265,
+    "httpOnly": false,
+    "name": "ab_guid",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "7fa03cdf-1c3d-4275-a763-7a3a790e561e"
+  },
+  {
+    "domain": ".zhipin.com",
+    "expiry": 1773514801,
+    "httpOnly": false,
+    "name": "bst",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "V2RtklFuD431lsVtRuyB4dKC-47DrQxSg~|RtklFuD431lsVtRuyB4dKC-47DrexS8~"
+  },
+  {
+    "domain": ".zhipin.com",
+    "httpOnly": false,
+    "name": "__c",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "1772609225"
+  },
+  {
+    "domain": ".zhipin.com",
+    "expiry": 1807169304,
+    "httpOnly": false,
+    "name": "__a",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "66429690.1772609225..1772609225.3.1.3.3"
+  }
+]
