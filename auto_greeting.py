@@ -2,23 +2,27 @@ import logging
 import random
 import time
 
-from selenium.common.exceptions import StaleElementReferenceException
-
-from browser_manager import BrowserManager
+from selenium_utils import StaleElementReferenceException
+from base_bot import BaseBot
 from page_objects import RecommendPage
 
 logger = logging.getLogger(__name__)
 
 
-class BossAutoGreeting:
-    """Boss直聘自动打招呼机器人。"""
+class BossAutoGreeting(BaseBot):
+    RECOMMEND_PAGE_URL = "https://www.zhipin.com/web/chat/recommend"
 
     def __init__(self, driver_path=None, user_data_dir=None, debug_port=9222):
-        self.browser = BrowserManager(driver_path, user_data_dir, debug_port)
+        super().__init__(driver_path, user_data_dir, debug_port)
         self.recommend_page = RecommendPage(self.browser)
 
+    def _get_default_redirect_url(self):
+        return self.RECOMMEND_PAGE_URL
+
+    def _after_login_redirect(self):
+        self._ensure_recommend_window(self.RECOMMEND_PAGE_URL)
+
     def _ensure_recommend_window(self, redirect_url):
-        """确保当前窗口为推荐页，必要时重定向。"""
         try:
             current = (self.browser.current_url or "").strip().lower()
             if current.startswith("data:") or "zhipin.com" not in current:
@@ -32,21 +36,6 @@ class BossAutoGreeting:
         except Exception:
             pass
 
-    def login(self, url="https://www.zhipin.com/", redirect_url="https://www.zhipin.com/web/chat/recommend", wait_login_timeout=300, login_cookie_names=None):
-        """等待登录完成后跳转到目标页面。"""
-        self.browser.get(url)
-        print("请在浏览器中完成登录，脚本将自动检测登录状态并跳转到推荐牛人页面...")
-
-        if self.browser.wait_for_login(timeout=wait_login_timeout, cookie_names=login_cookie_names):
-            print("检测到已登录，正在跳转到推荐牛人页面...")
-        else:
-            print("等待登录超时，将尝试直接打开目标页面（若未登录可能无法使用）。")
-
-        self.browser.get(redirect_url)
-        time.sleep(1)
-        self._ensure_recommend_window(redirect_url)
-        print("已打开推荐牛人页面")
-
     def auto_greeting_recommend_page(
         self,
         max_count=100,
@@ -59,19 +48,14 @@ class BossAutoGreeting:
         filter_no_resume_exchange=None,
         filter_education=None,
     ):
-        """自动向推荐候选人打招呼。"""
         try:
             count = 0
             no_new_count = 0
             last_height = 0
 
-            print("等待推荐页面加载...")
+            print("等待页面加载...")
             time.sleep(1.5)
-            try:
-                from config import recommend_page_url
-            except Exception:
-                recommend_page_url = "https://www.zhipin.com/web/chat/recommend"
-            self._ensure_recommend_window(recommend_page_url)
+            self._ensure_recommend_window(self.RECOMMEND_PAGE_URL)
 
             applied = self.recommend_page.apply_filters(
                 use_vip_filters=use_vip_filters,
@@ -81,16 +65,14 @@ class BossAutoGreeting:
             )
             has_filter_config = bool(filter_education or (use_vip_filters and (filter_school or filter_no_resume_exchange)))
             if has_filter_config and not applied:
-                print("提示：已配置筛选但未成功应用，请检查页面或手动点选筛选后再运行。")
-            else:
-                print("已应用筛选条件")
+                print("筛选未成功应用")
             time.sleep(2)
 
             if not self.recommend_page.switch_to_frame(wait_card_list_seconds=wait_card_list_seconds):
-                print("切换推荐页 iframe 或等待列表失败，请确认已在推荐牛人页。")
+                print("切换页面失败")
                 return 0
 
-            print("已进入推荐列表，开始自动打招呼...")
+            print("开始打招呼...")
 
             while count < max_count:
                 try:
@@ -102,7 +84,7 @@ class BossAutoGreeting:
                         if new_height == last_height:
                             no_new_count += 1
                             if no_new_count >= 3:
-                                print("已到底部且无更多可打招呼的候选人。")
+                                print("已到底部")
                                 break
                         else:
                             no_new_count = 0
@@ -120,19 +102,16 @@ class BossAutoGreeting:
                     except Exception:
                         try:
                             self.browser.execute_script("arguments[0].click();", btn)
-                        except Exception as e:
-                            print(f"点击失败: {e}")
+                        except Exception:
                             continue
 
                     time.sleep(0.75)
 
-                    # 退出 iframe 检测付费上限弹窗（弹窗在主文档中）
                     try:
                         self.browser.switch_to_default_content()
                         if self.recommend_page.check_and_close_payment_popup():
-                            print("今日主动沟通数已达上限，停止当前岗位打招呼，切换下一岗位")
+                            print("今日沟通数已达上限")
                             break
-                        # 重新进入 iframe
                         self.browser.driver.switch_to.frame("recommendFrame")
                     except Exception:
                         pass
@@ -141,14 +120,13 @@ class BossAutoGreeting:
                     time.sleep(0.5)
                     self.recommend_page.close_greet_panel()
                     count += 1
-                    print(f"已向 {count} 个候选人打招呼")
+                    print(f"已打招呼 {count} 人")
 
                     delay = random.uniform(interval_min, interval_max)
                     time.sleep(delay)
                 except StaleElementReferenceException:
                     continue
-                except Exception as e:
-                    print(f"本轮出错: {e}")
+                except Exception:
                     time.sleep(1)
 
             try:
@@ -156,10 +134,10 @@ class BossAutoGreeting:
             except Exception:
                 pass
 
-            print(f"自动打招呼结束，共 {count} 人。")
+            print(f"完成，共 {count} 人")
             return count
         except Exception as e:
-            print(f"自动打招呼过程错误: {e}")
+            print(f"错误: {e}")
             return 0
 
     def auto_greeting_all_jobs(
@@ -175,22 +153,16 @@ class BossAutoGreeting:
         filter_education=None,
         job_positions=None,
     ):
-        """遍历所有岗位自动打招呼，每个岗位保持相同筛选条件。"""
-        try:
-            from config import recommend_page_url
-        except Exception:
-            recommend_page_url = "https://www.zhipin.com/web/chat/recommend"
-
-        self._ensure_recommend_window(recommend_page_url)
+        self._ensure_recommend_window(self.RECOMMEND_PAGE_URL)
         time.sleep(2)
 
         if job_positions:
             jobs = job_positions
-            print(f"使用配置的岗位列表，共 {len(jobs)} 个岗位：{jobs}")
+            print(f"使用配置的岗位列表，共 {len(jobs)} 个")
         else:
             jobs = self.recommend_page.get_all_jobs()
             if not jobs:
-                print("未能获取岗位列表，将仅处理当前岗位")
+                print("未获取到岗位列表，仅处理当前岗位")
                 return self.auto_greeting_recommend_page(
                     max_count=max_count_per_job,
                     interval_min=interval_min,
@@ -202,16 +174,14 @@ class BossAutoGreeting:
                     filter_no_resume_exchange=filter_no_resume_exchange,
                     filter_education=filter_education,
                 )
-            print(f"检测到 {len(jobs)} 个岗位：{jobs}")
+            print(f"检测到 {len(jobs)} 个岗位")
 
         total_count = 0
         for i, job in enumerate(jobs):
-            print(f"\n{'='*50}")
-            print(f"[{i+1}/{len(jobs)}] 正在处理岗位：{job}")
-            print(f"{'='*50}")
+            print(f"\n[{i+1}/{len(jobs)}] 处理岗位：{job}")
 
             if not self.recommend_page.switch_to_job(job):
-                print(f"切换到岗位 [{job}] 失败，跳过")
+                print(f"切换岗位失败: {job}")
                 continue
 
             count = self.auto_greeting_recommend_page(
@@ -226,43 +196,34 @@ class BossAutoGreeting:
                 filter_education=filter_education,
             )
             total_count += count
-            print(f"岗位 [{job}] 完成，本次打招呼 {count} 人，累计 {total_count} 人")
 
-        print(f"\n所有岗位处理完成，共打招呼 {total_count} 人")
+        print(f"\n全部完成，共打招呼 {total_count} 人")
         return total_count
-
-    def close(self):
-        """关闭浏览器。"""
-        self.browser.close()
 
 
 if __name__ == "__main__":
     import config
 
-    bot = BossAutoGreeting(
-        driver_path=config.driver_path,
-        user_data_dir=config.user_data_dir,
-        debug_port=getattr(config, "debug_port", 9222),
-    )
-
-    try:
+    with BossAutoGreeting(
+        driver_path=config.config.browser.driver_path,
+        user_data_dir=config.config.browser.user_data_dir,
+        debug_port=config.config.browser.debug_port,
+    ) as bot:
         bot.login(
-            url=config.login_url,
-            redirect_url=config.recommend_page_url,
-            wait_login_timeout=getattr(config, "wait_login_timeout", 300),
+            url=config.config.urls.login_url,
+            redirect_url=config.config.urls.recommend_page_url,
+            wait_login_timeout=config.config.timing.wait_login_timeout,
         )
 
         bot.auto_greeting_all_jobs(
-            max_count_per_job=config.max_count,
-            interval_min=config.interval_min,
-            interval_max=config.interval_max,
-            wait_card_list_seconds=config.wait_card_list_seconds,
-            wait_modal_seconds=config.wait_modal_seconds,
-            use_vip_filters=getattr(config, "use_vip_filters", False),
-            filter_school=getattr(config, "filter_school", None),
-            filter_no_resume_exchange=getattr(config, "filter_no_resume_exchange", None),
-            filter_education=getattr(config, "filter_education", []),
-            job_positions=getattr(config, "job_positions", []),
+            max_count_per_job=config.config.jobs.max_count,
+            interval_min=config.config.timing.interval_min,
+            interval_max=config.config.timing.interval_max,
+            wait_card_list_seconds=config.config.timing.wait_card_list_seconds,
+            wait_modal_seconds=config.config.timing.wait_modal_seconds,
+            use_vip_filters=config.config.filters.use_vip_filters,
+            filter_school=config.config.filters.filter_school,
+            filter_no_resume_exchange=config.config.filters.filter_no_resume_exchange,
+            filter_education=config.config.filters.filter_education,
+            job_positions=config.config.jobs.job_positions,
         )
-    finally:
-        bot.close()

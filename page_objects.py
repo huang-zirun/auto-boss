@@ -1,18 +1,12 @@
 import time
 import logging
 
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium_utils import NoSuchElementException, StaleElementReferenceException, By, Keys, EC, WebDriverWait
 
 logger = logging.getLogger(__name__)
 
 
 class RecommendPage:
-    """Boss直聘推荐牛人页面操作类。"""
-
     DELAY_SHORT = 0.15
     DELAY_MEDIUM = 0.2
     DELAY_HALF = 0.5
@@ -67,7 +61,6 @@ class RecommendPage:
         self.browser = browser
 
     def _get_frame_element(self, wait_seconds=25):
-        """获取推荐页 iframe 元素。"""
         self.browser.switch_to_default_content()
         try:
             return WebDriverWait(self.browser.driver, wait_seconds).until(
@@ -86,7 +79,6 @@ class RecommendPage:
         return None
 
     def switch_to_frame(self, wait_card_list_seconds=15):
-        """切换到推荐页 iframe 并等待卡片列表加载。"""
         try:
             iframe = self._get_frame_element(wait_seconds=25)
             if iframe is None:
@@ -100,7 +92,6 @@ class RecommendPage:
             return False
 
     def open_filter_panel(self):
-        """打开筛选面板。"""
         for sel in self.FILTER_LABEL_SELECTORS:
             try:
                 elements = self.browser.find_elements(By.CSS_SELECTOR, sel)
@@ -115,7 +106,6 @@ class RecommendPage:
         return self.browser.click_by_text("筛选") or self.browser.click_by_text("筛选条件")
 
     def click_filter_option(self, text):
-        """点击筛选选项。"""
         try:
             options = self.browser.find_elements(*self.OPTION_SELECTOR)
             for el in options:
@@ -135,7 +125,6 @@ class RecommendPage:
         return self.browser.click_by_text(text)
 
     def click_filter_confirm(self):
-        """点击筛选确认按钮。"""
         try:
             buttons = self.browser.find_elements(*self.CONFIRM_BUTTON_SELECTOR)
             for el in buttons:
@@ -149,7 +138,6 @@ class RecommendPage:
         return self.browser.click_by_text("确定")
 
     def apply_filters(self, use_vip_filters, filter_school, filter_no_resume_exchange, filter_education):
-        """应用筛选条件。"""
         if not self.switch_to_frame():
             return False
 
@@ -182,7 +170,6 @@ class RecommendPage:
         return applied
 
     def find_first_greet_button(self):
-        """查找首个可用的打招呼按钮。"""
         try:
             cards = self.browser.find_elements(By.CSS_SELECTOR, ".card-list .card-item")
             for card in cards:
@@ -200,7 +187,6 @@ class RecommendPage:
         return None
 
     def _find_send_button(self):
-        """查找发送按钮。"""
         for by, selector in self.SEND_BUTTON_SELECTORS:
             try:
                 btn = self.browser.find_element(by, selector)
@@ -211,7 +197,6 @@ class RecommendPage:
         return None
 
     def handle_greet_modal(self, wait_modal_seconds=5):
-        """处理打招呼弹窗。"""
         try:
             time.sleep(self.DELAY_HALF)
 
@@ -237,7 +222,6 @@ class RecommendPage:
         return False
 
     def check_and_close_payment_popup(self):
-        """检测付费上限弹窗（位于主文档），若出现则关闭并返回True。"""
         try:
             popup = self.browser.find_element(*self.PAYMENT_POPUP_SELECTOR)
             if popup.is_displayed():
@@ -252,7 +236,6 @@ class RecommendPage:
         return False
 
     def _close_overlay(self):
-        """关闭可能遮挡点击的遮罩层（在主文档中操作）。"""
         for sel in (".boss-layer__wrapper", ".dialog-container", ".layer-wrapper"):
             try:
                 for el in self.browser.find_elements(By.CSS_SELECTOR, sel):
@@ -262,7 +245,6 @@ class RecommendPage:
                 pass
 
     def _open_job_dropdown(self):
-        """打开岗位下拉框，返回触发按钮元素。"""
         self.browser.switch_to_default_content()
         self._close_overlay()
         iframe = self._get_frame_element(wait_seconds=10)
@@ -279,7 +261,6 @@ class RecommendPage:
         return trigger
 
     def _find_job_options(self):
-        """用多个备选 XPath 依次尝试，返回第一个有结果的元素列表。"""
         for xpath in self.JOB_OPTION_XPATHS:
             try:
                 els = self.browser.find_elements(By.XPATH, xpath)
@@ -290,7 +271,6 @@ class RecommendPage:
         return []
 
     def _close_dropdown(self, trigger=None):
-        """关闭岗位下拉框。"""
         try:
             self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
         except Exception:
@@ -302,13 +282,11 @@ class RecommendPage:
         time.sleep(self.DELAY_MEDIUM)
 
     def _get_job_options_with_dropdown(self):
-        """打开下拉框并获取岗位选项，返回 (trigger, options) 元组。"""
         trigger = self._open_job_dropdown()
         options = self._find_job_options()
         return trigger, options
 
     def get_all_jobs(self):
-        """获取岗位下拉框中所有岗位名称列表。"""
         try:
             trigger, options = self._get_job_options_with_dropdown()
             jobs = []
@@ -326,7 +304,6 @@ class RecommendPage:
             return []
 
     def switch_to_job(self, job_text):
-        """通过下拉框切换到指定岗位，等待候选人列表刷新。"""
         try:
             trigger, options = self._get_job_options_with_dropdown()
             for el in options:
@@ -355,7 +332,6 @@ class RecommendPage:
             return False
 
     def close_greet_panel(self):
-        """关闭招呼弹窗。"""
         try:
             self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
             time.sleep(self.DELAY_SHORT)

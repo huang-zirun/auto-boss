@@ -8,11 +8,13 @@
 - **多岗位自动切换**：支持遍历所有招聘岗位，自动在每个岗位下执行打招呼操作
 - **智能筛选**：支持按学历、学校、简历交换状态等条件筛选候选人
 - **付费上限检测**：自动检测每日主动沟通次数上限，到达上限后自动切换下一个岗位
+- **简历收集**：自动遍历沟通列表，检测简历交换申请并下载附件简历
 
 ## 适用对象
 
 本脚本专为**招聘者**设计，帮助招聘人员：
 - 批量联系推荐的候选人
+- 自动收集候选人发送的附件简历
 - 提高招聘效率
 - 自动化重复性沟通工作
 - 多岗位批量处理
@@ -27,9 +29,9 @@
 ## 安装步骤
 
 1. 安装Python（如果未安装）
-2. 安装Selenium库：
+2. 安装依赖：
    ```bash
-   pip install selenium
+   pip install -r requirements.txt
    ```
 3. 下载ChromeDriver：
    - 查看Chrome浏览器版本：在Chrome地址栏输入 `chrome://version/`
@@ -40,37 +42,41 @@
 
 打开 `config.py` 文件，修改以下配置：
 
-### 基础配置
+### 浏览器配置 (BrowserConfig)
 - `driver_path`：ChromeDriver路径，为空则使用PATH中的驱动
 - `user_data_dir`：Chrome用户数据目录，用于保持登录状态
 - `debug_port`：远程调试端口（默认9222），用于复用已打开的浏览器
 
-### 登录与入口
+### URL配置 (UrlConfig)
 - `login_url`：Boss直聘登录页面
 - `recommend_page_url`：推荐牛人页面
+- `chat_page_url`：沟通列表页面
+
+### 时间配置 (TimingConfig)
 - `wait_login_timeout`：等待登录检测的超时时间（秒）
-
-### 操作限制
-- `max_count`：每个岗位最多联系候选人数量
-
-### 操作间隔（秒）
+- `wait_card_list_seconds`：等待卡片列表加载时间
+- `wait_modal_seconds`：等待弹窗加载时间
 - `interval_min`：每次打招呼最小间隔（秒）
 - `interval_max`：每次打招呼最大间隔（秒）
 
-### 等待时间（秒）
-- `wait_card_list_seconds`：等待卡片列表加载时间
-- `wait_modal_seconds`：等待弹窗加载时间
-
-### 筛选配置
+### 筛选配置 (FilterConfig)
 - `use_vip_filters`：是否使用VIP筛选器
 - `filter_school`：学校筛选条件（如"双一流院校"）
 - `filter_no_resume_exchange`：简历未交换筛选条件（如"近一个月没有"）
 - `filter_education`：学历筛选条件（如["本科", "硕士", "博士"]）
 
-### 职位配置
+### 职位配置 (JobConfig)
 - `job_positions`：指定处理的职位列表，为空则处理所有职位
+- `max_count`：每个岗位最多联系候选人数量
+
+### 简历配置 (ResumeConfig)
+- `resume_load_timeout`：等待附件简历加载完成的超时时间（秒）
+- `resume_chat_interval`：切换会话间隔（秒）
+- `resume_max_collect`：最多处理多少个有简历申请的会话（0表示不限制）
 
 ## 使用说明
+
+### 自动打招呼
 
 1. 配置 `config.py` 文件中的参数
 
@@ -87,6 +93,57 @@
    - 如果配置了 `job_positions`，则只处理指定岗位
    - 如果 `job_positions` 为空，则自动获取所有岗位并依次处理
    - 每个岗位处理完成后会自动切换到下一个岗位
+
+### 自动收集简历
+
+1. 配置 `config.py` 文件中的简历相关参数
+
+2. 运行脚本：
+   ```bash
+   python auto_resume_collect.py
+   ```
+
+3. 脚本会打开Chrome浏览器，登录后跳转到沟通列表页
+
+4. 自动遍历所有会话，检测是否有简历交换申请：
+   - 发现有「对方想发送附件简历」的申请时，自动点击同意
+   - 自动点击预览附件简历
+   - 自动点击下载按钮
+
+## 项目结构
+
+```
+auto-boos/
+├── config.py              # 配置文件（dataclass分组配置）
+├── browser_manager.py     # 浏览器管理模块
+├── selenium_utils.py      # Selenium统一导入模块
+├── base_bot.py            # 抽象基类，封装公共逻辑
+├── page_objects.py        # 页面对象封装
+├── auto_greeting.py       # 自动打招呼主程序
+├── auto_resume_collect.py # 自动收集简历程序
+├── requirements.txt       # 依赖清单
+└── README.md              # 项目说明文档
+```
+
+### 模块依赖关系
+
+```
+                    config.py
+                        ↑
+          ┌─────────────┼─────────────┐
+          │             │             │
+    auto_greeting.py  auto_resume_collect.py
+          │             │
+          └──────┬──────┘
+                 ↓
+            base_bot.py (抽象基类)
+                 ↓
+          page_objects.py
+                 ↓
+          browser_manager.py
+                 ↓
+          selenium_utils.py
+```
 
 ## 主要功能
 
@@ -117,14 +174,15 @@
 - 达到上限后自动关闭弹窗并切换到下一个岗位
 - 避免脚本卡在上限提示页面
 
+### 简历自动收集
+- 自动遍历沟通列表中的所有会话
+- 检测候选人发送的附件简历申请
+- 自动同意、预览并下载附件简历
+
 ### 浏览器复用
 - 支持通过debug_port复用已打开的浏览器
 - 不关闭浏览器窗口时，下次运行可直接连接
 - 保持登录状态，无需重复登录
-
-### 调试功能
-- 代码中包含详细的日志输出
-- 帮助定位元素选择器问题
 
 ## 注意事项
 
@@ -144,10 +202,3 @@
 5. **候选人列表为空**：请确认您的账号是否有推荐的候选人，或者检查筛选条件
 6. **用户数据目录被占用**：请先关闭占用该目录的Chrome窗口，或更换其他用户数据目录
 7. **付费上限弹窗**：脚本会自动处理，如果仍卡住请手动关闭弹窗
-
-## 文件结构
-
-- `auto_greeting.py`：主程序，包含BossAutoGreeting类和运行逻辑
-- `browser_manager.py`：浏览器管理类，负责浏览器生命周期和基础操作
-- `page_objects.py`：页面操作类，封装Boss直聘页面的各种操作
-- `config.py`：配置文件，包含所有可配置参数
