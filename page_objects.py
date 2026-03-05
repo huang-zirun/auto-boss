@@ -254,8 +254,11 @@ class RecommendPage:
         return False
 
     def _open_job_dropdown(self):
-        """打开岗位下拉框，返回触发按钮元素。"""
+        """打开岗位下拉框，返回触发按钮元素。（在 recommend iframe 内查找）"""
         self.browser.switch_to_default_content()
+        iframe = self._get_frame_element(wait_seconds=10)
+        if iframe is not None:
+            self.browser.switch_to_frame(iframe)
         trigger = self.browser.find_element(*self.JOB_DROPDOWN_TRIGGER)
         trigger.click()
         time.sleep(0.8)
