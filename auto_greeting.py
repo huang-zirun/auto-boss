@@ -43,7 +43,7 @@ class BossAutoGreeting:
             print("等待登录超时，将尝试直接打开目标页面（若未登录可能无法使用）。")
 
         self.browser.get(redirect_url)
-        time.sleep(1.5)
+        time.sleep(1)
         self._ensure_recommend_window(redirect_url)
         print("已打开推荐牛人页面")
 
@@ -125,6 +125,18 @@ class BossAutoGreeting:
                             continue
 
                     time.sleep(0.75)
+
+                    # 退出 iframe 检测付费上限弹窗（弹窗在主文档中）
+                    try:
+                        self.browser.switch_to_default_content()
+                        if self.recommend_page.check_and_close_payment_popup():
+                            print("今日主动沟通数已达上限，停止当前岗位打招呼，切换下一岗位")
+                            break
+                        # 重新进入 iframe
+                        self.browser.driver.switch_to.frame("recommendFrame")
+                    except Exception:
+                        pass
+
                     self.recommend_page.handle_greet_modal(wait_modal_seconds=wait_modal_seconds)
                     time.sleep(0.5)
                     self.recommend_page.close_greet_panel()
@@ -150,6 +162,75 @@ class BossAutoGreeting:
             print(f"自动打招呼过程错误: {e}")
             return 0
 
+    def auto_greeting_all_jobs(
+        self,
+        max_count_per_job=100,
+        interval_min=2.0,
+        interval_max=5.0,
+        wait_card_list_seconds=15,
+        wait_modal_seconds=5,
+        use_vip_filters=False,
+        filter_school=None,
+        filter_no_resume_exchange=None,
+        filter_education=None,
+        job_positions=None,
+    ):
+        """遍历所有岗位自动打招呼，每个岗位保持相同筛选条件。"""
+        try:
+            from config import recommend_page_url
+        except Exception:
+            recommend_page_url = "https://www.zhipin.com/web/chat/recommend"
+
+        self._ensure_recommend_window(recommend_page_url)
+        time.sleep(2)
+
+        if job_positions:
+            jobs = job_positions
+            print(f"使用配置的岗位列表，共 {len(jobs)} 个岗位：{jobs}")
+        else:
+            jobs = self.recommend_page.get_all_jobs()
+            if not jobs:
+                print("未能获取岗位列表，将仅处理当前岗位")
+                return self.auto_greeting_recommend_page(
+                    max_count=max_count_per_job,
+                    interval_min=interval_min,
+                    interval_max=interval_max,
+                    wait_card_list_seconds=wait_card_list_seconds,
+                    wait_modal_seconds=wait_modal_seconds,
+                    use_vip_filters=use_vip_filters,
+                    filter_school=filter_school,
+                    filter_no_resume_exchange=filter_no_resume_exchange,
+                    filter_education=filter_education,
+                )
+            print(f"检测到 {len(jobs)} 个岗位：{jobs}")
+
+        total_count = 0
+        for i, job in enumerate(jobs):
+            print(f"\n{'='*50}")
+            print(f"[{i+1}/{len(jobs)}] 正在处理岗位：{job}")
+            print(f"{'='*50}")
+
+            if not self.recommend_page.switch_to_job(job):
+                print(f"切换到岗位 [{job}] 失败，跳过")
+                continue
+
+            count = self.auto_greeting_recommend_page(
+                max_count=max_count_per_job,
+                interval_min=interval_min,
+                interval_max=interval_max,
+                wait_card_list_seconds=wait_card_list_seconds,
+                wait_modal_seconds=wait_modal_seconds,
+                use_vip_filters=use_vip_filters,
+                filter_school=filter_school,
+                filter_no_resume_exchange=filter_no_resume_exchange,
+                filter_education=filter_education,
+            )
+            total_count += count
+            print(f"岗位 [{job}] 完成，本次打招呼 {count} 人，累计 {total_count} 人")
+
+        print(f"\n所有岗位处理完成，共打招呼 {total_count} 人")
+        return total_count
+
     def close(self):
         """关闭浏览器。"""
         self.browser.close()
@@ -167,8 +248,8 @@ if __name__ == "__main__":
             wait_login_timeout=getattr(config, "wait_login_timeout", 300),
         )
 
-        bot.auto_greeting_recommend_page(
-            max_count=config.max_count,
+        bot.auto_greeting_all_jobs(
+            max_count_per_job=config.max_count,
             interval_min=config.interval_min,
             interval_max=config.interval_max,
             wait_card_list_seconds=config.wait_card_list_seconds,
@@ -177,6 +258,7 @@ if __name__ == "__main__":
             filter_school=getattr(config, "filter_school", None),
             filter_no_resume_exchange=getattr(config, "filter_no_resume_exchange", None),
             filter_education=getattr(config, "filter_education", []),
+            job_positions=getattr(config, "job_positions", []),
         )
     finally:
         bot.close()

@@ -19,8 +19,15 @@ class _LoggedInCondition:
         (By.XPATH, "//*[contains(text(), '退出登录')]"),
     ]
 
+    LOGIN_INDICATORS = [
+        (By.CSS_SELECTOR, ".user-info"),
+        (By.CSS_SELECTOR, ".user-name"),
+        (By.CSS_SELECTOR, ".avatar"),
+        (By.XPATH, "//div[contains(@class, 'user')]"),
+    ]
+
     def __init__(self, cookie_names=None):
-        self.cookie_names = cookie_names or ["__zp_stoken__"]
+        self.cookie_names = cookie_names or ["__zp_stoken__", "wt2"]
 
     def __call__(self, driver):
         try:
@@ -28,6 +35,7 @@ class _LoggedInCondition:
                 names = {c.get("name") for c in (driver.get_cookies() or [])}
                 if any(n in names for n in self.cookie_names):
                     return True
+
             for by, selector in self.LOGOUT_SELECTORS:
                 try:
                     el = driver.find_element(by, selector)
@@ -35,6 +43,19 @@ class _LoggedInCondition:
                         return True
                 except NoSuchElementException:
                     continue
+
+            for by, selector in self.LOGIN_INDICATORS:
+                try:
+                    el = driver.find_element(by, selector)
+                    if el.is_displayed():
+                        return True
+                except NoSuchElementException:
+                    continue
+
+            current_url = driver.current_url or ""
+            if "zhipin.com" in current_url and "/web/chat/recommend" in current_url:
+                return True
+
         except Exception:
             pass
         return False
@@ -112,7 +133,7 @@ class BrowserManager:
         """等待用户登录完成。"""
         from selenium.common.exceptions import TimeoutException
         try:
-            WebDriverWait(self.driver, timeout, poll_frequency=1).until(
+            WebDriverWait(self.driver, timeout, poll_frequency=0.5).until(
                 _LoggedInCondition(cookie_names=cookie_names)
             )
             return True

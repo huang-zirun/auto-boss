@@ -48,6 +48,12 @@ class RecommendPage:
         "//*[@aria-label='关闭']",
     ]
 
+    JOB_DROPDOWN_TRIGGER = (By.CSS_SELECTOR, "div.ui-dropmenu-label")
+    JOB_OPTION_XPATH = "//span[contains(@class,'label') and descendant::u[contains(@class,'h')]]"
+
+    PAYMENT_POPUP_SELECTOR = (By.CSS_SELECTOR, ".payment-layout-v2")
+    PAYMENT_CLOSE_SELECTOR = (By.CSS_SELECTOR, "i.icon-close")
+
     def __init__(self, browser):
         self.browser = browser
 
@@ -229,6 +235,90 @@ class RecommendPage:
         except Exception:
             pass
         return False
+
+    def check_and_close_payment_popup(self):
+        """检测付费上限弹窗（位于主文档），若出现则关闭并返回True。调用前需已切换至主文档。"""
+        try:
+            popup = self.browser.find_element(*self.PAYMENT_POPUP_SELECTOR)
+            if popup.is_displayed():
+                try:
+                    self.browser.find_element(*self.PAYMENT_CLOSE_SELECTOR).click()
+                    time.sleep(0.5)
+                except Exception:
+                    pass
+                return True
+        except NoSuchElementException:
+            pass
+        except Exception:
+            pass
+        return False
+
+    def _open_job_dropdown(self):
+        """打开岗位下拉框，返回触发按钮元素。"""
+        self.browser.switch_to_default_content()
+        trigger = self.browser.find_element(*self.JOB_DROPDOWN_TRIGGER)
+        trigger.click()
+        time.sleep(0.8)
+        return trigger
+
+    def get_all_jobs(self):
+        """获取岗位下拉框中所有岗位名称列表。"""
+        try:
+            trigger = self._open_job_dropdown()
+            options = self.browser.find_elements(By.XPATH, self.JOB_OPTION_XPATH)
+            jobs = []
+            for el in options:
+                try:
+                    text = (el.text or "").strip()
+                    if text:
+                        jobs.append(text)
+                except Exception:
+                    continue
+            try:
+                self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            except Exception:
+                try:
+                    trigger.click()
+                except Exception:
+                    pass
+            time.sleep(0.3)
+            return jobs
+        except Exception as e:
+            logger.warning(f"获取岗位列表失败: {e}")
+            return []
+
+    def switch_to_job(self, job_text):
+        """通过下拉框切换到指定岗位，等待候选人列表刷新。"""
+        try:
+            self._open_job_dropdown()
+            options = self.browser.find_elements(By.XPATH, self.JOB_OPTION_XPATH)
+            for el in options:
+                try:
+                    text = (el.text or "").strip()
+                    if not text:
+                        continue
+                    if job_text in text or text in job_text:
+                        self.browser.execute_script(
+                            "arguments[0].scrollIntoView({block:'center'});", el
+                        )
+                        time.sleep(0.2)
+                        try:
+                            el.click()
+                        except Exception:
+                            self.browser.execute_script("arguments[0].click();", el)
+                        time.sleep(3)
+                        return True
+                except Exception:
+                    continue
+            try:
+                self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            except Exception:
+                pass
+            logger.warning(f"未找到岗位: {job_text}")
+            return False
+        except Exception as e:
+            logger.warning(f"切换岗位失败: {e}")
+            return False
 
     def close_greet_panel(self):
         """关闭招呼弹窗。"""
