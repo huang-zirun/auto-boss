@@ -1,7 +1,7 @@
 import time
 import logging
 
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 
 class RecommendPage:
     """Boss直聘推荐牛人页面操作类。"""
+
+    DELAY_SHORT = 0.15
+    DELAY_MEDIUM = 0.2
+    DELAY_HALF = 0.5
+    DELAY_LONG = 0.75
+    DELAY_REFRESH = 3
 
     RECOMMEND_FRAME_SELECTOR = (By.CSS_SELECTOR, "iframe[name='recommendFrame']")
     CARD_LIST_SELECTOR = (By.CSS_SELECTOR, ".card-list .card-item")
@@ -64,10 +70,9 @@ class RecommendPage:
         """获取推荐页 iframe 元素。"""
         self.browser.switch_to_default_content()
         try:
-            iframe = WebDriverWait(self.browser.driver, wait_seconds).until(
+            return WebDriverWait(self.browser.driver, wait_seconds).until(
                 EC.presence_of_element_located(self.RECOMMEND_FRAME_SELECTOR)
             )
-            return iframe
         except Exception:
             pass
 
@@ -103,7 +108,7 @@ class RecommendPage:
                     if "筛选" not in (el.text or ""):
                         continue
                     if self.browser.safe_click(el):
-                        time.sleep(0.2)
+                        time.sleep(self.DELAY_MEDIUM)
                         return True
             except Exception:
                 continue
@@ -123,7 +128,7 @@ class RecommendPage:
                     arguments[0].click();
                     if (mask) { mask.style.pointerEvents = ''; }
                 """, el)
-                time.sleep(0.2)
+                time.sleep(self.DELAY_MEDIUM)
                 return True
         except Exception:
             pass
@@ -137,7 +142,7 @@ class RecommendPage:
                 if (el.text or "").strip() != "确定":
                     continue
                 if self.browser.safe_click(el):
-                    time.sleep(0.2)
+                    time.sleep(self.DELAY_MEDIUM)
                     return True
         except Exception:
             pass
@@ -145,16 +150,10 @@ class RecommendPage:
 
     def apply_filters(self, use_vip_filters, filter_school, filter_no_resume_exchange, filter_education):
         """应用筛选条件。"""
+        if not self.switch_to_frame():
+            return False
+
         applied = False
-        iframe = self._get_frame_element(wait_seconds=25)
-        if iframe is None:
-            return False
-
-        try:
-            self.browser.switch_to_frame(iframe)
-        except Exception:
-            return False
-
         try:
             time.sleep(1)
             self.open_filter_panel()
@@ -171,7 +170,7 @@ class RecommendPage:
 
             if self.click_filter_confirm():
                 applied = True
-                time.sleep(0.75)
+                time.sleep(self.DELAY_LONG)
         except Exception:
             pass
         finally:
@@ -194,9 +193,7 @@ class RecommendPage:
                         continue
                     if btn.is_displayed():
                         return btn
-                except NoSuchElementException:
-                    continue
-                except StaleElementReferenceException:
+                except (NoSuchElementException, StaleElementReferenceException):
                     continue
         except Exception:
             pass
@@ -216,14 +213,14 @@ class RecommendPage:
     def handle_greet_modal(self, wait_modal_seconds=5):
         """处理打招呼弹窗。"""
         try:
-            time.sleep(0.5)
+            time.sleep(self.DELAY_HALF)
 
             for xpath in self.TEMPLATE_SELECTORS:
                 try:
                     el = self.browser.find_element(By.XPATH, xpath)
                     if el.is_displayed():
                         el.click()
-                        time.sleep(0.5)
+                        time.sleep(self.DELAY_HALF)
                         send_btn = self._find_send_button()
                         if send_btn:
                             send_btn.click()
@@ -240,18 +237,16 @@ class RecommendPage:
         return False
 
     def check_and_close_payment_popup(self):
-        """检测付费上限弹窗（位于主文档），若出现则关闭并返回True。调用前需已切换至主文档。"""
+        """检测付费上限弹窗（位于主文档），若出现则关闭并返回True。"""
         try:
             popup = self.browser.find_element(*self.PAYMENT_POPUP_SELECTOR)
             if popup.is_displayed():
                 try:
                     self.browser.find_element(*self.PAYMENT_CLOSE_SELECTOR).click()
-                    time.sleep(0.5)
+                    time.sleep(self.DELAY_HALF)
                 except Exception:
                     pass
                 return True
-        except NoSuchElementException:
-            pass
         except Exception:
             pass
         return False
@@ -267,7 +262,7 @@ class RecommendPage:
                 pass
 
     def _open_job_dropdown(self):
-        """打开岗位下拉框，返回触发按钮元素。（在 recommend iframe 内查找）"""
+        """打开岗位下拉框，返回触发按钮元素。"""
         self.browser.switch_to_default_content()
         self._close_overlay()
         iframe = self._get_frame_element(wait_seconds=10)
@@ -275,7 +270,6 @@ class RecommendPage:
             self.browser.switch_to_frame(iframe)
         trigger = self.browser.find_element(*self.JOB_DROPDOWN_TRIGGER)
         trigger.click()
-        # 等待下拉框真正展开（出现 ui-dropmenu-visible 类）
         try:
             WebDriverWait(self.browser.driver, 3).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.ui-dropmenu-visible"))
@@ -295,11 +289,28 @@ class RecommendPage:
                 continue
         return []
 
+    def _close_dropdown(self, trigger=None):
+        """关闭岗位下拉框。"""
+        try:
+            self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+        except Exception:
+            if trigger:
+                try:
+                    trigger.click()
+                except Exception:
+                    pass
+        time.sleep(self.DELAY_MEDIUM)
+
+    def _get_job_options_with_dropdown(self):
+        """打开下拉框并获取岗位选项，返回 (trigger, options) 元组。"""
+        trigger = self._open_job_dropdown()
+        options = self._find_job_options()
+        return trigger, options
+
     def get_all_jobs(self):
         """获取岗位下拉框中所有岗位名称列表。"""
         try:
-            trigger = self._open_job_dropdown()
-            options = self._find_job_options()
+            trigger, options = self._get_job_options_with_dropdown()
             jobs = []
             for el in options:
                 try:
@@ -308,14 +319,7 @@ class RecommendPage:
                         jobs.append(text)
                 except Exception:
                     continue
-            try:
-                self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            except Exception:
-                try:
-                    trigger.click()
-                except Exception:
-                    pass
-            time.sleep(0.3)
+            self._close_dropdown(trigger)
             return jobs
         except Exception as e:
             logger.warning(f"获取岗位列表失败: {e}")
@@ -324,8 +328,7 @@ class RecommendPage:
     def switch_to_job(self, job_text):
         """通过下拉框切换到指定岗位，等待候选人列表刷新。"""
         try:
-            self._open_job_dropdown()
-            options = self._find_job_options()
+            trigger, options = self._get_job_options_with_dropdown()
             for el in options:
                 try:
                     text = (el.text or "").strip()
@@ -335,19 +338,16 @@ class RecommendPage:
                         self.browser.execute_script(
                             "arguments[0].scrollIntoView({block:'center'});", el
                         )
-                        time.sleep(0.2)
+                        time.sleep(self.DELAY_MEDIUM)
                         try:
                             el.click()
                         except Exception:
                             self.browser.execute_script("arguments[0].click();", el)
-                        time.sleep(3)
+                        time.sleep(self.DELAY_REFRESH)
                         return True
                 except Exception:
                     continue
-            try:
-                self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            except Exception:
-                pass
+            self._close_dropdown()
             logger.warning(f"未找到岗位: {job_text}")
             return False
         except Exception as e:
@@ -358,7 +358,7 @@ class RecommendPage:
         """关闭招呼弹窗。"""
         try:
             self.browser.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            time.sleep(0.15)
+            time.sleep(self.DELAY_SHORT)
         except Exception:
             pass
 
@@ -367,7 +367,7 @@ class RecommendPage:
                 el = self.browser.find_element(By.XPATH, xpath)
                 if el.is_displayed():
                     el.click()
-                    time.sleep(0.15)
+                    time.sleep(self.DELAY_SHORT)
                     break
             except NoSuchElementException:
                 continue
