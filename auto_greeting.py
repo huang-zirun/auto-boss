@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 class BossAutoGreeting:
     """Boss直聘自动打招呼机器人。"""
 
-    def __init__(self, driver_path=None, user_data_dir=None):
-        self.browser = BrowserManager(driver_path, user_data_dir)
+    def __init__(self, driver_path=None, user_data_dir=None, debug_port=9222):
+        self.browser = BrowserManager(driver_path, user_data_dir, debug_port)
         self.recommend_page = RecommendPage(self.browser)
 
     def _ensure_recommend_window(self, redirect_url):
@@ -239,7 +239,11 @@ class BossAutoGreeting:
 if __name__ == "__main__":
     import config
 
-    bot = BossAutoGreeting(driver_path=config.driver_path, user_data_dir=config.user_data_dir)
+    bot = BossAutoGreeting(
+        driver_path=config.driver_path,
+        user_data_dir=config.user_data_dir,
+        debug_port=getattr(config, "debug_port", 9222),
+    )
 
     try:
         bot.login(

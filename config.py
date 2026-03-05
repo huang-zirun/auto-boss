@@ -1,6 +1,7 @@
 # Chrome 驱动配置
 driver_path = ""                              # ChromeDriver 路径，留空使用系统默认
 user_data_dir = r"C:\Users\Admin\AppData\Local\Google\Chrome\User Data\Profile 2"  # Chrome 用户数据目录
+debug_port = 9222                             # 远程调试端口，用于复用已打开的浏览器（不关上次窗口时可直接连上）
 
 # 页面 URL
 login_url = "https://www.zhipin.com/"         # 登录页面

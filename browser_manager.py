@@ -64,16 +64,30 @@ class _LoggedInCondition:
 class BrowserManager:
     """浏览器管理类，负责浏览器生命周期和基础操作。"""
 
-    def __init__(self, driver_path=None, user_data_dir=None):
-        self.driver = self._create_driver(driver_path, user_data_dir)
+    def __init__(self, driver_path=None, user_data_dir=None, debug_port=9222):
+        self.driver = self._create_driver(driver_path, user_data_dir, debug_port)
 
-    def _create_driver(self, driver_path, user_data_dir):
-        """创建并配置 WebDriver。"""
+    def _create_driver(self, driver_path, user_data_dir, debug_port):
+        """创建并配置 WebDriver。若调试端口上已有浏览器则复用，否则启动新浏览器并开启调试端口。"""
+        # 先尝试连接已有浏览器（上次脚本未关窗口时可直接复用）
+        if debug_port:
+            try:
+                attach_options = webdriver.ChromeOptions()
+                attach_options.add_experimental_option("debuggerAddress", f"127.0.0.1:{debug_port}")
+                driver = webdriver.Chrome(options=attach_options) if not driver_path else webdriver.Chrome(executable_path=driver_path, options=attach_options)
+                driver.maximize_window()
+                logger.info("已连接已有浏览器")
+                return driver
+            except Exception:
+                pass
+
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--disable-software-rasterizer")
+        if debug_port:
+            chrome_options.add_argument(f"--remote-debugging-port={debug_port}")
 
         if user_data_dir:
             chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
@@ -84,6 +98,12 @@ class BrowserManager:
             else:
                 driver = webdriver.Chrome(options=chrome_options)
         except Exception as e:
+            err_msg = str(e).lower()
+            if user_data_dir and ("user data" in err_msg or "already in use" in err_msg or "lock" in err_msg or "profile" in err_msg):
+                raise RuntimeError(
+                    "启动浏览器失败：当前用户数据目录已被占用。请先关闭占用该目录的 Chrome 窗口，或确认已配置 debug_port 以复用浏览器。\n"
+                    f"用户数据目录: {user_data_dir}"
+                ) from e
             raise RuntimeError("启动浏览器失败") from e
 
         driver.maximize_window()

@@ -49,7 +49,10 @@ class RecommendPage:
     ]
 
     JOB_DROPDOWN_TRIGGER = (By.CSS_SELECTOR, "div.ui-dropmenu-label")
-    JOB_OPTION_XPATH = "//span[contains(@class,'label') and descendant::u[contains(@class,'h')]]"
+    JOB_OPTION_XPATHS = [
+        "//li[contains(@class,'job-item')]//span[contains(@class,'label')]",
+        "//span[contains(@class,'label') and descendant::u[contains(@class,'h')]]",
+    ]
 
     PAYMENT_POPUP_SELECTOR = (By.CSS_SELECTOR, ".payment-layout-v2")
     PAYMENT_CLOSE_SELECTOR = (By.CSS_SELECTOR, "i.icon-close")
@@ -253,22 +256,50 @@ class RecommendPage:
             pass
         return False
 
+    def _close_overlay(self):
+        """关闭可能遮挡点击的遮罩层（在主文档中操作）。"""
+        for sel in (".boss-layer__wrapper", ".dialog-container", ".layer-wrapper"):
+            try:
+                for el in self.browser.find_elements(By.CSS_SELECTOR, sel):
+                    if el.is_displayed():
+                        self.browser.execute_script("arguments[0].style.display='none';", el)
+            except Exception:
+                pass
+
     def _open_job_dropdown(self):
         """打开岗位下拉框，返回触发按钮元素。（在 recommend iframe 内查找）"""
         self.browser.switch_to_default_content()
+        self._close_overlay()
         iframe = self._get_frame_element(wait_seconds=10)
         if iframe is not None:
             self.browser.switch_to_frame(iframe)
         trigger = self.browser.find_element(*self.JOB_DROPDOWN_TRIGGER)
         trigger.click()
-        time.sleep(0.8)
+        # 等待下拉框真正展开（出现 ui-dropmenu-visible 类）
+        try:
+            WebDriverWait(self.browser.driver, 3).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div.ui-dropmenu-visible"))
+            )
+        except Exception:
+            time.sleep(0.8)
         return trigger
+
+    def _find_job_options(self):
+        """用多个备选 XPath 依次尝试，返回第一个有结果的元素列表。"""
+        for xpath in self.JOB_OPTION_XPATHS:
+            try:
+                els = self.browser.find_elements(By.XPATH, xpath)
+                if any((e.text or "").strip() for e in els):
+                    return els
+            except Exception:
+                continue
+        return []
 
     def get_all_jobs(self):
         """获取岗位下拉框中所有岗位名称列表。"""
         try:
             trigger = self._open_job_dropdown()
-            options = self.browser.find_elements(By.XPATH, self.JOB_OPTION_XPATH)
+            options = self._find_job_options()
             jobs = []
             for el in options:
                 try:
@@ -294,7 +325,7 @@ class RecommendPage:
         """通过下拉框切换到指定岗位，等待候选人列表刷新。"""
         try:
             self._open_job_dropdown()
-            options = self.browser.find_elements(By.XPATH, self.JOB_OPTION_XPATH)
+            options = self._find_job_options()
             for el in options:
                 try:
                     text = (el.text or "").strip()
