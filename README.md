@@ -5,7 +5,6 @@
 本脚本用于帮助招聘者在Boss直聘平台上高效联系候选人，支持以下功能：
 
 - **推荐模式**：在推荐牛人页面自动向推荐的候选人打招呼，批量联系潜在候选人
-- **搜索模式**：根据关键词搜索候选人，自动向符合条件的候选人打招呼
 
 ## 适用对象
 
@@ -46,18 +45,7 @@
 - `recommend_page_url`：推荐牛人页面
 - `wait_login_timeout`：等待登录检测的超时时间（秒）
 
-### 运行模式
-- `mode`：运行模式，可选值：
-  - `"search"`：搜索候选人后打招呼
-  - `"recommend"`：推荐牛人页打招呼（默认）
-
-### 搜索模式配置（mode="search" 时生效）
-- `keywords`：搜索关键词，如 "Python开发"
-- `greeting_message`：打招呼消息
-- `max_count`：最大打招呼数量
-
-### 推荐模式配置（mode="recommend" 时生效）
-- `greeting_message`：打招呼消息
+### 推荐模式配置
 - `max_count`：最多联系候选人数量
 - `interval_min`：每次打招呼最小间隔（秒）
 - `interval_max`：每次打招呼最大间隔（秒）
@@ -77,7 +65,7 @@
 
 4. 脚本会自动检测登录状态，登录成功后自动跳转到目标页面
 
-5. 根据配置的模式自动执行打招呼操作
+5. 自动执行打招呼操作
 
 ## 主要功能
 
@@ -89,13 +77,7 @@
 - 在推荐牛人页面自动向候选人打招呼
 - 自动滚动加载更多候选人
 - 智能识别打招呼按钮（排除已沟通、已打招呼等状态）
-- 支持自定义消息或使用模板
 - 随机间隔避免被检测，模拟人工操作
-
-### 搜索模式
-- 根据关键词搜索候选人
-- 自动向符合条件的候选人打招呼
-- 支持翻页操作
 
 ### 调试功能
 - `debug_page_elements()` 方法可以打印页面元素信息
@@ -126,21 +108,10 @@ from auto_greeting import BossAutoGreeting
 bot = BossAutoGreeting()
 bot.login()
 bot.auto_greeting_recommend_page(
-    greeting_message="您好，我是XX公司的招聘负责人，看到您的简历很匹配我们的职位，期待与您沟通！",
     max_count=50,
     interval_min=2,
     interval_max=5
 )
-bot.close()
-```
-
-### 搜索模式
-```python
-from auto_greeting import BossAutoGreeting
-
-bot = BossAutoGreeting()
-bot.login()
-bot.auto_greeting("Python开发", "您好，我是XX公司的招聘负责人，看到您的简历很匹配我们的职位，期待与您沟通！", 20)
 bot.close()
 ```
 
@@ -157,33 +128,19 @@ bot.close()
 ## 配置示例
 
 ```python
-# 使用推荐模式（推荐）
-mode = "recommend"
-greeting_message = "您好，我是XX公司的招聘负责人，看到您的简历很匹配我们的职位，期待与您沟通！"
+# 配置示例
 max_count = 50
 interval_min = 2
 interval_max = 5
-
-# 使用搜索模式
-mode = "search"
-keywords = "Python开发"
-greeting_message = "您好，我是XX公司的招聘负责人，看到您的简历很匹配我们的职位，期待与您沟通！"
-max_count = 20
 ```
 
-## 招聘场景建议
+## 使用建议
 
-1. **打招呼消息建议**：
-   - 简洁明了，突出职位亮点
-   - 说明为什么选择联系该候选人
-   - 提供明确的下一步行动指引
-
-2. **使用频率建议**：
+1. **使用频率建议**：
    - 建议设置合理的间隔时间（2-5秒）
    - 每日联系数量建议控制在合理范围内
    - 避免在短时间内大量操作
 
-3. **最佳实践**：
+2. **最佳实践**：
    - 先筛选出真正匹配的候选人
-   - 个性化打招呼消息，提高回复率
    - 及时跟进候选人的回复
