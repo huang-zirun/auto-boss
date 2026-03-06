@@ -22,6 +22,8 @@ class UrlConfig:
 class TimingConfig:
     """时间等待相关配置"""
     wait_login_timeout: int = 300  # 等待登录超时时间（秒）
+    login_page_wait_seconds: float = 3.0  # 打开登录页后等待页面/二维码稳定的时间（秒），避免页面未稳定就检测导致来不及扫码
+    login_poll_interval_seconds: float = 2.0  # 登录状态检测轮询间隔（秒），间隔越大页面越稳定、越方便扫码
     wait_card_list_seconds: int = 15  # 等待候选人卡片列表加载时间（秒）
     wait_modal_seconds: int = 5  # 等待弹窗加载时间（秒）
     interval_min: float = 0.1  # 操作间隔最小时间（秒）
@@ -87,6 +89,8 @@ chat_page_url = config.urls.chat_page_url
 
 # 时间配置
 wait_login_timeout = config.timing.wait_login_timeout
+login_page_wait_seconds = config.timing.login_page_wait_seconds
+login_poll_interval_seconds = config.timing.login_poll_interval_seconds
 wait_card_list_seconds = config.timing.wait_card_list_seconds
 wait_modal_seconds = config.timing.wait_modal_seconds
 interval_min = config.timing.interval_min

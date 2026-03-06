@@ -428,6 +428,8 @@ if __name__ == "__main__":
             url=config.config.urls.login_url,
             redirect_url=config.config.urls.chat_page_url,
             wait_login_timeout=config.config.timing.wait_login_timeout,
+            login_page_wait=config.config.timing.login_page_wait_seconds,
+            login_poll_interval=config.config.timing.login_poll_interval_seconds,
         )
         bot.run_all_chats(
             max_count=config.config.resume.resume_max_collect,

@@ -129,9 +129,10 @@ class BrowserManager:
     def wait_for_element(self, by, selector, timeout=10):
         return WebDriverWait(self.driver, timeout).until(EC.presence_of_element_located((by, selector)))
 
-    def wait_for_login(self, timeout=300, cookie_names=None):
+    def wait_for_login(self, timeout=300, cookie_names=None, poll_interval=2.0):
+        """等待用户完成登录。poll_interval 越大轮询越慢，页面越稳定，便于扫码。"""
         try:
-            WebDriverWait(self.driver, timeout, poll_frequency=0.5).until(_LoggedInCondition(cookie_names))
+            WebDriverWait(self.driver, timeout, poll_frequency=poll_interval).until(_LoggedInCondition(cookie_names))
             return True
         except TimeoutException:
             return False
