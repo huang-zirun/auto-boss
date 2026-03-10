@@ -289,6 +289,19 @@ class BossAutoResumeCollect(BaseBot):
             time.sleep(0.3)
         return (True, True, True, download_ok)
 
+    def _get_item_name_key(self, item):
+        """从列表项获取候选人标识，用于去重。统一空格与括号便于匹配。"""
+        try:
+            title_el = item.find_element(By.CSS_SELECTOR, ".geek-name")
+            name = (title_el.text or "").strip()
+            job_el = item.find_element(By.CSS_SELECTOR, ".source-job")
+            job = (job_el.text or "").strip()
+            key = f"{name} ({job})"
+            key = " ".join(key.split()).replace("（", "(").replace("）", ")")
+            return key or None
+        except Exception:
+            return None
+
     def run_all_chats(self, max_count=0, wait_after_click_chat=1.5, interval_between_chats=1.5, wait_after_agree=3,
                       resume_load_timeout=30, scroll_step=200, chat_interval_min=None, chat_interval_max=None,
                       download_interval_min=None, download_interval_max=None, wait_after_agree_min=None,
@@ -297,6 +310,7 @@ class BossAutoResumeCollect(BaseBot):
         collected = 0
         prev_count = 0
         no_new_rounds = 0
+        processed_keys = set()
         use_random_chat = chat_interval_min is not None and chat_interval_max is not None and chat_interval_max > chat_interval_min
         use_random_download = download_interval_min is not None and download_interval_max is not None and download_interval_max > download_interval_min
 
@@ -311,13 +325,8 @@ class BossAutoResumeCollect(BaseBot):
                 if prev_count == 0:
                     print("未找到会话列表")
                 break
-            if len(items) <= prev_count and prev_count > 0:
-                no_new_rounds += 1
-                if no_new_rounds >= 2:
-                    break
-            else:
-                no_new_rounds = 0
             prev_count = len(items)
+            round_collected = 0
 
             if collected == 0 and prev_count > 0:
                 print(f"当前可见 {len(items)} 个会话")
@@ -326,6 +335,9 @@ class BossAutoResumeCollect(BaseBot):
                 if max_count and collected >= max_count:
                     break
                 try:
+                    name_key = self._get_item_name_key(item)
+                    if name_key and name_key in processed_keys:
+                        continue
                     try:
                         self.browser.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'auto'});", item)
                         time.sleep(0.3)
@@ -334,6 +346,9 @@ class BossAutoResumeCollect(BaseBot):
                         if i >= len(items):
                             break
                         item = items[i]
+                        name_key = self._get_item_name_key(item)
+                        if name_key and name_key in processed_keys:
+                            continue
                     try:
                         item.click()
                     except Exception:
@@ -364,14 +379,15 @@ class BossAutoResumeCollect(BaseBot):
                             time.sleep(interval_between_chats)
                         continue
 
-                    name_job = ""
-                    try:
-                        title_el = item.find_element(By.CSS_SELECTOR, ".geek-name")
-                        name_job = (title_el.text or "").strip()
-                        job_el = item.find_element(By.CSS_SELECTOR, ".source-job")
-                        name_job = f"{name_job} ({job_el.text or ''})".strip()
-                    except Exception:
-                        name_job = f"会话 {i+1}"
+                    name_job = name_key
+                    if not name_job:
+                        try:
+                            title_el = item.find_element(By.CSS_SELECTOR, ".geek-name")
+                            name_job = (title_el.text or "").strip()
+                            job_el = item.find_element(By.CSS_SELECTOR, ".source-job")
+                            name_job = f"{name_job} ({job_el.text or ''})".strip()
+                        except Exception:
+                            name_job = f"会话 {i+1}"
                     print(f"\n[{collected + 1}] 检测到简历申请: {name_job}")
 
                     agree_ok, preview_ok, loaded_ok, download_ok = self.run_once(
@@ -384,6 +400,9 @@ class BossAutoResumeCollect(BaseBot):
                     )
                     if download_ok:
                         collected += 1
+                        round_collected += 1
+                        if name_key:
+                            processed_keys.add(name_key)
                         print(f"已收集简历，累计 {collected} 份")
                         if use_random_download:
                             delay = random.uniform(download_interval_min, download_interval_max)
@@ -411,6 +430,15 @@ class BossAutoResumeCollect(BaseBot):
 
             if max_count and collected >= max_count:
                 break
+            if round_collected == 0:
+                no_new_rounds += 1
+                if no_new_rounds >= 3:
+                    break
+            else:
+                no_new_rounds = 0
+            # 每轮结束后多滚一段，让下一轮可见更多新会话，支持列表往下滚
+            self._scroll_chat_list_down(step=scroll_step * 2)
+            time.sleep(0.3)
 
         print(f"\n完成，共收集 {collected} 份简历")
         return collected

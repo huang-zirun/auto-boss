@@ -1,0 +1,179 @@
+# Boss直聘选择器配置
+# 版本: 2.0
+# 说明: 当网站结构变化时，只需更新此文件
+
+recommend_page:
+  iframe:
+    selector: "iframe[name='recommendFrame']"
+    type: css
+    description: "推荐页面iframe"
+  
+  card_list:
+    selector: ".card-list .card-item"
+    type: css
+    description: "候选人卡片列表"
+  
+  greet_button:
+    selector: ".//button[contains(text(), '打招呼')]"
+    type: xpath
+    description: "打招呼按钮"
+  
+  filter:
+    panel:
+      selector: ".filter-label"
+      type: css
+      description: "筛选面板"
+    option:
+      selector: "div.option"
+      type: css
+      description: "筛选选项"
+    confirm:
+      selector: "div.btn"
+      type: css
+      description: "确认按钮"
+  
+  send_button:
+    - selector: "//button[contains(text(), '发送')]"
+      type: xpath
+    - selector: "//*[@role='button' and contains(text(), '发送')]"
+      type: xpath
+    - selector: "button[class*='send']"
+      type: css
+    - selector: ".btn-send"
+      type: css
+  
+  close_button:
+    - selector: "//div[contains(@class,'close')]"
+      type: xpath
+    - selector: "//i[contains(@class,'close')]"
+      type: xpath
+    - selector: "//button[contains(@class,'close')]"
+      type: xpath
+    - selector: "//*[@aria-label='关闭']"
+      type: xpath
+  
+  job_dropdown:
+    trigger:
+      selector: "div.ui-dropmenu-label"
+      type: css
+      description: "岗位下拉菜单触发器"
+    option:
+      - selector: "//li[contains(@class,'job-item')]//span[contains(@class,'label')]"
+        type: xpath
+      - selector: "//span[contains(@class,'label') and descendant::u[contains(@class,'h')]]"
+        type: xpath
+  
+  payment_popup:
+    container:
+      selector: ".payment-layout-v2"
+      type: css
+      description: "付费弹窗容器"
+    close:
+      selector: "i.icon-close"
+      type: css
+      description: "关闭按钮"
+  
+  input:
+    - selector: "textarea[placeholder*='消息']"
+      type: css
+    - selector: "textarea[placeholder*='输入']"
+      type: css
+    - selector: "textarea[placeholder*='请输入']"
+      type: css
+    - selector: "div[contenteditable='true']"
+      type: css
+    - selector: "textarea"
+      type: css
+  
+  template:
+    - selector: "//div[contains(@class,'greet')]//div[contains(@class,'item') or contains(@class,'template')]"
+      type: xpath
+    - selector: "//li[contains(@class,'template') or contains(@class,'greet')]"
+      type: xpath
+    - selector: "//*[contains(text(), '使用') and contains(text(), '招呼')]"
+      type: xpath
+    - selector: "//*[contains(text(), '选择') and contains(text(), '语')]"
+      type: xpath
+
+chat_page:
+  chat_list:
+    item:
+      selector: "div.geek-item"
+      type: css
+      description: "会话列表项"
+    name:
+      selector: ".geek-name"
+      type: css
+      description: "候选人姓名"
+    job:
+      selector: ".source-job"
+      type: css
+      description: "候选人应聘职位"
+  
+  agree_button:
+    - selector: "span.card-btn"
+      type: css
+    - selector: "a.btn"
+      type: css
+  
+  preview_resume:
+    selector: "//span[contains(@class,'card-btn') and contains(text(),'点击预览附件简历')]"
+    type: xpath
+    description: "预览附件简历按钮"
+  
+  attachment_btns:
+    selector: ".attachment-resume-btns"
+    type: css
+    description: "附件简历操作按钮区域"
+  
+  download_button:
+    selector: "svg.boss-svg.svg-icon use"
+    type: css
+    description: "下载按钮SVG图标"
+  
+  close_preview:
+    selector: "i.icon-close"
+    type: css
+    description: "关闭预览按钮"
+  
+  chat_input:
+    - selector: "#boss-chat-editor-input"
+      type: css
+    - selector: "div.boss-chat-editor-input[contenteditable='true']"
+      type: css
+  
+  request_resume:
+    selector: "//span[contains(@class,'operate-btn') and text()='求简历']"
+    type: xpath
+    description: "求简历按钮"
+  
+  confirm_button:
+    selector: "//span[contains(@class,'boss-btn-primary') and contains(@class,'boss-btn') and text()='确定']"
+    type: xpath
+    description: "确认按钮"
+
+common:
+  login_indicator:
+    logout:
+      - selector: "a.link-signout"
+        type: css
+      - selector: "//a[contains(text(), '退出登录')]"
+        type: xpath
+      - selector: "//*[contains(text(), '退出登录')]"
+        type: xpath
+    user_info:
+      - selector: ".user-info"
+        type: css
+      - selector: ".user-name"
+        type: css
+      - selector: ".avatar"
+        type: css
+      - selector: "//div[contains(@class, 'user')]"
+        type: xpath
+  
+  risk_control_texts:
+    - "正在加载验证"
+    - "异常访问行为"
+    - "完成验证后即可正常使用"
+  
+  loading_text: "正在加载简历"
